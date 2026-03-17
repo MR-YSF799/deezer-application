@@ -1,0 +1,48 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Architecture : 2 conteneurs (frontend + backend)
+#  MongoDB      : instance locale sur la machine hôte (port 27017)
+#  Sur Windows  : host.docker.internal résout automatiquement vers le host
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Backend Node.js / Express ───────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: deezer-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"          # accessible sur http://localhost:3000 depuis le host
+    environment:
+      PORT: 3000
+      # host.docker.internal → adresse de la machine Windows depuis un conteneur
+      MONGO_URI: mongodb://host.docker.internal:27017/deezerdb
+    networks:
+      - deezer-net
+    # Indispensable sur Windows/Mac : permet à host.docker.internal de fonctionner
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # ── Frontend Nginx ──────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: deezer-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"            # accessible sur http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - deezer-net
+
+# ── Réseau interne Docker ───────────────────────────────────────────────────
+networks:
+  deezer-net:
+    driver: bridge
+    name: deezer-network
